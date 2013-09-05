@@ -1,0 +1,165 @@
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>One PC peerconnection test</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width">
+    </head>
+    <body>
+        <h1 id='h1id'>Big Bro</h1>
+        <video id="vv" autoplay="autoplay">Vd</video>
+        <video id="vv2" autoplay="autoplay">Vd</video>
+
+        <script>
+            document.getElementById('h1id').innerHTML = prompt("Come on~", "I'm");
+
+            function displayProp(obj) {
+                var names = "";
+                for (var name in obj) {
+                    if (typeof obj[name] == "object") {
+                        names += displayProp(obj[name]);
+                    }
+                    else
+                    {
+                        names += name + ": " + obj[name] + " | ";
+                    }
+                }
+                return names;
+            }
+
+            var vele = document.getElementById('vv');
+            var vele2 = document.getElementById('vv2');
+
+
+            //// things to send by websocket or other way. jsoned.
+            var osd2send,
+                    asd2send,
+                    oice2send,
+                    aice2send;
+            var oiceonce = false;
+            var aiceonce = false;
+
+            window.URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+            PeerConnection = window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+
+            navigator.getUserMedia({video: true, audio: true},
+            function(localStream) {
+                var url = window.URL.createObjectURL(localStream);
+                vele.src = url || localStream;
+
+                rpc = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+                rpc2 = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+//                console.log('[[[rpc init]]]: ' + displayProp(rpc));
+
+                rpc.onaddstream = function(evt) {
+                    if (!rpc || !evt || !evt.stream) {
+                        console.log('wrong when rpc.onaddstream');
+                        return;
+                    }
+//                    console.log('rpc.onaddstream');
+                    var url = window.URL.createObjectURL(evt.stream);
+                    vele.src = url || evt.stream;
+                };
+
+                rpc2.onaddstream = function(evt) {
+                    if (!rpc2 || !evt || !evt.stream) {
+                        console.log('wrong when rpc2.onaddstream');
+                        return;
+                    }
+//                    console.log('rpc2.onaddstream');
+                    var url = window.URL.createObjectURL(evt.stream);
+                    vele2.src = url || evt.stream;
+                };
+
+                rpc.onicecandidate = function(evt) {
+                    if (!rpc || !evt || !evt.candidate) {
+                        console.log('wrong when rpc.onicecandidate');
+                        return;
+                    }
+//                    console.log('rpc.onicecandidate');
+                    oice2send = JSON.stringify(evt.candidate);
+                    console.log("[[[offerer to send ice]]]: " + oice2send);
+
+                    // Assume to be on the other side~
+                    var par = JSON.parse(oice2send)
+//                    var par = JSON.parse(prompt("oice2send", oice2send))
+                    console.log("[[[answerer accept ice]]]: " + displayProp(par));
+                    rpc2.addIceCandidate(new RTCIceCandidate(par));
+                };
+//                    rpc2.addIceCandidate(new RTCIceCandidate(
+//                            {sdpMLineIndex: par.sdpMLineIndex,
+//                                candidate: par.candidate}));
+//                };
+
+                rpc2.onicecandidate = function(evt) {
+                    if (!rpc2 || !evt || !evt.candidate) {
+                        console.log('wrong when rpc2.onicecandidate');
+                        return;
+                    }
+//                    console.log('rpc2.onicecandidate');
+                    aice2send = JSON.stringify(evt.candidate);
+                    console.log("[[[answer to send ice]]]: " + aice2send);
+
+                    // Assume to be on the other side~
+                    var par = JSON.parse(aice2send);
+//                    var par = JSON.parse(prompt("aice2send", aice2send))
+                    console.log("[[[offerer accept ice]]]: " + displayProp(par));
+                    rpc.addIceCandidate(new RTCIceCandidate(par));
+//                            rpc.addIceCandidate(new RTCIceCandidate(
+//                            {sdpMLineIndex: par.sdpMLineIndex,
+//                                candidate: par.candidate}));
+                };
+
+                rpc.addStream(localStream);
+                rpc.createOffer(
+                        function(osd) {
+                            // For safety, "send" first, set next.
+                            osd2send = JSON.stringify(osd);
+                            console.log("[[[offerer to send sd]]]: " + osd2send);
+                            rpc.setLocalDescription(osd, function() {// onPc1LocalDescriptionSet
+                                // after this function returns, pc1 will start firing icecandidate events
+
+                                // Assume to be on the other side~
+                                rpc2.setRemoteDescription(new RTCSessionDescription(JSON.parse(prompt("osd2send", osd2send))), function() {// onPc2RemoteDescriptionSet
+                                    rpc2.createAnswer(
+                                            function(asd) {
+                                                // For safety, "send" first, set next.
+                                                asd2send = JSON.stringify(asd);
+                                                console.log("[[[answerer to send sd]]]: " + asd2send);
+                                                rpc2.setLocalDescription(asd, function() {// onPc2LocalDescriptionSet
+                                                    // after this function returns, you'll start getting icecandidate events on pc2
+
+                                                    // Assume to be on the other side~
+                                                    rpc.setRemoteDescription(new RTCSessionDescription(JSON.parse(prompt("asd2send", asd2send))), function() {// onPc1RemoteDescriptionSet
+                                                        alert('sdp final!~~');
+                                                    })
+                                                });
+                                            }
+                                    );
+                                });
+                            });
+
+//                            console.log("[[[osd set to local desc]]]: " + displayProp(osd));
+
+                        },
+                        null,
+                        {'mandatory': {'OfferToReceiveAudio': true, 'OfferToReceiveVideo': true}}
+                );
+
+            },
+                    function(err) {
+                        console.log(err);
+                    });
+
+
+
+
+        </script>
+    </body>
+</html>

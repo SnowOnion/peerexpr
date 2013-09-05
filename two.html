@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Two</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width">
+    </head>
+    <body>
+        <h1 id='h1id'>Dr. Two</h1>
+        <video id="vv" autoplay="autoplay">Vd</video>
+        <h1 id='h1id2'>Dr. One</h1>
+        <video id="vv2" autoplay="autoplay">Vd</video>
+
+        <script>
+
+            function displayProp(obj) {
+                var names = "";
+                for (var name in obj) {
+                    if (typeof obj[name] == "object") {
+                        names += displayProp(obj[name]);
+                    }
+                    else
+                    {
+                        names += name + ": " + obj[name] + " | ";
+                    }
+                }
+                return names;
+            }
+
+            var vele = document.getElementById('vv');
+            var vele2 = document.getElementById('vv2');
+
+
+
+            //// things to send by websocket or other way. jsoned.
+            var osd2send,
+                    asd2send,
+                    oice2send,
+                    aice2send;
+
+            var ws2 = new WebSocket("wss://www.webrtc-experiment.com:8563");
+            ws2.onopen = function() {
+                console.log('ws2 open');
+            };
+
+            ws2.onmessage = function(evt) {
+                console.log('[[ws2 response]]: ' + evt.data);
+                if (IS_OFFER) {////
+                    var par = JSON.parse(evt.data.value);
+                    rpc2.setRemoteDescription(new RTCSessionDescription(par), function() {
+                        rpc2.createAnswer(
+                                function(asd) {
+                                    rpc2.setLocalDescription(asd, function() {
+                                        asd2send = JSON.stringify(asd);
+                                        ws2.send(asd2send);////
+                                    });
+                                }
+                        );
+                    });
+                }
+                else if (IS_ICE) {////
+                    var par = JSON.parse(evt.data.value);
+                    rpc2.addIceCandidate(new RTCIceCandidate(par));
+                }
+                else {
+                    console.log('unknown response');
+                }
+            };
+
+            ws2.onclose = function(evt) {
+                console.log("WebSocket1 Closed!");
+            };
+
+            ws2.onerror = function(evt) {
+                console.log("WebSocket1 Error!");
+            };
+
+            window.URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+            PeerConnection = window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+
+            navigator.getUserMedia({video: true, audio: true},
+            function(localStream) {
+                var url = window.URL.createObjectURL(localStream);
+                vele.src = url || localStream;
+
+                rpc2 = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+
+                rpc2.onaddstream = function(evt) {
+                    if (!rpc2 || !evt || !evt.stream) {
+                        console.log('wrong when rpc2.onaddstream');
+                        return;
+                    }
+                    var url = window.URL.createObjectURL(evt.stream);
+                    vele2.src = url || evt.stream;
+                };
+
+                rpc2.onicecandidate = function(evt) {
+                    if (!rpc2 || !evt || !evt.candidate) {
+                        console.log('wrong when rpc2.onicecandidate');
+                        return;
+                    }
+                    aice2send = JSON.stringify(evt.candidate);
+                    ws2.send(aice2send);////
+                };
+
+                rpc2.addStream(localStream);
+
+            },
+                    function(err) {
+                        console.log(err);
+                    });
+
+
+
+
+        </script>
+    </body>
+</html>

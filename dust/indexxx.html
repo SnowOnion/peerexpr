@@ -1,0 +1,44 @@
+<!--
+To change this template, choose Tools | Templates
+and open the template in the editor.
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <div class="w">
+            <header>
+                <h1>Echo</h1>
+                <hr>
+                <div>
+                    <video  autoplay="" id="vv">您的浏览器不支持 video 标签。</video>
+                </div>
+        </div>
+        <!--<script type="text/javascript" src="audiolib.js"></script>-->
+        <script>
+            window.URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+            // var video = document.querySelector('video'), permited = false;
+            var video = document.getElementById('vv');
+
+            function videoSuccesssCallback(stream) {
+                console.log('video succ');
+                permited = true;
+                video.src = window.URL.createObjectURL(stream) || stream;
+            }
+
+            function useless(err) {
+                console.log("useless func");
+            }
+
+            navigator.getUserMedia({video: true}, videoSuccesssCallback, useless);
+
+
+        </script>
+
+    </body>
+</html>
