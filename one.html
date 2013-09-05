@@ -13,6 +13,27 @@
 
         <script>
 
+            /* FormatYXY 20130905 11:30
+             * 
+             * request sent to server:
+             * request=
+             * {
+             *   type:"rtc",
+             *   value:stringify({
+             *      type:"OFFER" / "ANSWER" / "ICE"
+             *      value: <offersdp> / <answersdp> / <icecandidate>
+             *   })
+             * }
+             * 
+             * server respond:
+             * respond=
+             * request.value=
+             * stringify({
+             *      type:"OFFER" / "ANSWER" / "ICE"
+             *      value: <offersdp> / <answersdp> / <icecandidate>
+             *   })
+             */
+
             function displayProp(obj) {
                 var names = "";
                 for (var name in obj) {
@@ -45,15 +66,15 @@
 
             ws1.onmessage = function(evt) {
                 console.log('[[ws1 response]]: ' + evt.data);
-                if (IS_ANSWER) {////
-                    var par = JSON.parse(evt.data.value);
-                    rpc.setRemoteDescription(new RTCSessionDescription(par), function() {
+                var par = JSON.parse(evt.data);
+
+                if (par.type == 'ANSWER') {
+                    rpc.setRemoteDescription(new RTCSessionDescription(par.value), function() {
                         alert('sdp final~');
                     })
                 }
-                else if (IS_ICE) {////
-                    var par = JSON.parse(evt.data.value);
-                    rpc.addIceCandidate(new RTCIceCandidate(par));
+                else if (par.type == 'ICE') {
+                    rpc.addIceCandidate(new RTCIceCandidate(par.value));
                 }
                 else {
                     console.log('unknown response');
@@ -94,8 +115,14 @@
                         console.log('wrong when rpc.onicecandidate');
                         return;
                     }
-                    oice2send = JSON.stringify(evt.candidate);
-                    ws1.send(oice2send);////
+                    oice2send = JSON.stringify({
+                        type: 'rtc',
+                        value: JSON.stringify({
+                            type: 'ICE',
+                            value: evt.candidate
+                        })
+                    });
+                    ws1.send(oice2send);
                 };
 
                 rpc.addStream(localStream);
@@ -103,8 +130,15 @@
                 rpc.createOffer(
                         function(osd) {
                             rpc.setLocalDescription(osd, function() {
-                                osd2send = JSON.stringify(osd);
-                                ws1.send(osd2send);////
+                                // inner type for my identifying, outer type for server identifying
+                                osd2send = JSON.stringify({
+                                    type: 'rtc',
+                                    value: JSON.stringify({
+                                        type: 'OFFER',
+                                        value: osd
+                                    })
+                                });
+                                ws1.send(osd2send);
                             });
                         },
                         null,

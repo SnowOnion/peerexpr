@@ -9,6 +9,8 @@
         <h1 id='h1id'>自交</h1>
         <video id="vv" autoplay="autoplay">Vd</video>
         <video id="vv2" autoplay="autoplay">Vd</video>
+        <audio id='aa' controls='controls'></audio>
+        <audio id='aa2' controls='controls'></audio>
 
         <script>
 
@@ -30,6 +32,10 @@
             var vele = document.getElementById('vv');
             var vele2 = document.getElementById('vv2');
 
+            var aele = document.getElementById('aa');
+            var aele2 = document.getElementById('aa2');
+
+
             //// things to send by websocket or other way. jsoned.
             var osd2send, // offerer's sdp to send
                     asd2send, // answerer's sdp to send
@@ -40,65 +46,70 @@
             navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
             PeerConnection = window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
 
+            // Put it here no problem
+            rpc = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+            rpc2 = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+
+            rpc.onaddstream = function(evt) {
+                if (!rpc || !evt || !evt.stream) {
+                    console.log('wrong when rpc.onaddstream');
+                    return;
+                }
+//                    console.log('rpc.onaddstream');
+                var url = window.URL.createObjectURL(evt.stream);
+                vele.src = url || evt.stream;
+            };
+
+            rpc2.onaddstream = function(evt) {
+                if (!rpc2 || !evt || !evt.stream) {
+                    console.log('wrong when rpc2.onaddstream');
+                    return;
+                }
+//                    console.log('rpc2.onaddstream');
+                var url = window.URL.createObjectURL(evt.stream);
+                vele2.src = url || evt.stream;
+            };
+
+            rpc.onicecandidate = function(evt) {
+                if (!rpc || !evt || !evt.candidate) {
+                    console.log('wrong when rpc.onicecandidate');
+                    return;
+                }
+//                    console.log('rpc.onicecandidate');
+                oice2send = JSON.stringify(evt.candidate);
+//                    console.log("[[[offerer to send ice]]]: " + oice2send);
+
+                // Assume to be on the other side~
+                var par = JSON.parse(oice2send)
+//                    console.log("[[[answerer accept ice]]]: " + displayProp(par));
+                rpc2.addIceCandidate(new RTCIceCandidate(par));
+            };
+
+            rpc2.onicecandidate = function(evt) {
+                if (!rpc2 || !evt || !evt.candidate) {
+                    console.log('wrong when rpc2.onicecandidate');
+                    return;
+                }
+//                    console.log('rpc2.onicecandidate');
+                aice2send = JSON.stringify(evt.candidate);
+//                    console.log("[[[answer to send ice]]]: " + aice2send);
+
+                // Assume to be on the other side~
+                var par = JSON.parse(aice2send);
+//                    console.log("[[[offerer accept ice]]]: " + displayProp(par));
+                rpc.addIceCandidate(new RTCIceCandidate(par));
+
+            };
+
             navigator.getUserMedia({video: true, audio: true},
             function(localStream) {
                 var url = window.URL.createObjectURL(localStream);
                 vele.src = url || localStream;
 
-                rpc = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
-                rpc2 = new PeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+
 //                console.log('[[[rpc init]]]: ' + displayProp(rpc));
 
-                rpc.onaddstream = function(evt) {
-                    if (!rpc || !evt || !evt.stream) {
-                        console.log('wrong when rpc.onaddstream');
-                        return;
-                    }
-//                    console.log('rpc.onaddstream');
-                    var url = window.URL.createObjectURL(evt.stream);
-                    vele.src = url || evt.stream;
-                };
 
-                rpc2.onaddstream = function(evt) {
-                    if (!rpc2 || !evt || !evt.stream) {
-                        console.log('wrong when rpc2.onaddstream');
-                        return;
-                    }
-//                    console.log('rpc2.onaddstream');
-                    var url = window.URL.createObjectURL(evt.stream);
-                    vele2.src = url || evt.stream;
-                };
-
-                rpc.onicecandidate = function(evt) {
-                    if (!rpc || !evt || !evt.candidate) {
-                        console.log('wrong when rpc.onicecandidate');
-                        return;
-                    }
-//                    console.log('rpc.onicecandidate');
-                    oice2send = JSON.stringify(evt.candidate);
-//                    console.log("[[[offerer to send ice]]]: " + oice2send);
-
-                    // Assume to be on the other side~
-                    var par = JSON.parse(oice2send)
-//                    console.log("[[[answerer accept ice]]]: " + displayProp(par));
-                    rpc2.addIceCandidate(new RTCIceCandidate(par));
-                };
-
-                rpc2.onicecandidate = function(evt) {
-                    if (!rpc2 || !evt || !evt.candidate) {
-                        console.log('wrong when rpc2.onicecandidate');
-                        return;
-                    }
-//                    console.log('rpc2.onicecandidate');
-                    aice2send = JSON.stringify(evt.candidate);
-//                    console.log("[[[answer to send ice]]]: " + aice2send);
-
-                    // Assume to be on the other side~
-                    var par = JSON.parse(aice2send);
-//                    console.log("[[[offerer accept ice]]]: " + displayProp(par));
-                    rpc.addIceCandidate(new RTCIceCandidate(par));
-
-                };
 
                 rpc.addStream(localStream);
                 rpc.createOffer(
@@ -135,6 +146,12 @@
                     function(err) {
                         console.log(err);
                     });
+            navigator.getUserMedia({audio: true},
+            function(stream) {
+                console.log("again stream");
+                aele.src = window.URL.createObjectURL(stream);
+                aele2.src = window.URL.createObjectURL(stream);
+            });
         </script>
     </body>
 </html>

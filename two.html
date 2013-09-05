@@ -38,29 +38,34 @@
                     oice2send,
                     aice2send;
 
-            var ws2 = new WebSocket("wss://www.webrtc-experiment.com:8563");
+            var ws2 = new WebSocket("wss://www.webrtc-experiment.com:8563");////
             ws2.onopen = function() {
                 console.log('ws2 open');
             };
 
             ws2.onmessage = function(evt) {
                 console.log('[[ws2 response]]: ' + evt.data);
-                if (IS_OFFER) {////
-                    var par = JSON.parse(evt.data.value);
-                    rpc2.setRemoteDescription(new RTCSessionDescription(par), function() {
+                var par = JSON.parse(evt.data);
+                if (par.type == 'OFFER') {
+                    rpc2.setRemoteDescription(new RTCSessionDescription(par.value), function() {
                         rpc2.createAnswer(
                                 function(asd) {
                                     rpc2.setLocalDescription(asd, function() {
-                                        asd2send = JSON.stringify(asd);
-                                        ws2.send(asd2send);////
+                                        asd2send = JSON.stringify({
+                                            type: 'rtc',
+                                            value: JSON.stringify({
+                                                type: 'ANSWER',
+                                                value: asd
+                                            })
+                                        });
+                                        ws2.send(asd2send);
                                     });
                                 }
                         );
                     });
                 }
-                else if (IS_ICE) {////
-                    var par = JSON.parse(evt.data.value);
-                    rpc2.addIceCandidate(new RTCIceCandidate(par));
+                else if (par.type == 'ICE') {
+                    rpc2.addIceCandidate(new RTCIceCandidate(par.value));
                 }
                 else {
                     console.log('unknown response');
@@ -100,8 +105,14 @@
                         console.log('wrong when rpc2.onicecandidate');
                         return;
                     }
-                    aice2send = JSON.stringify(evt.candidate);
-                    ws2.send(aice2send);////
+                    aice2send = JSON.stringify({
+                        type: 'rtc',
+                        value: JSON.stringify({
+                            type: 'ICE',
+                            value: evt.candidate
+                        })
+                    });
+                    ws2.send(aice2send);
                 };
 
                 rpc2.addStream(localStream);
